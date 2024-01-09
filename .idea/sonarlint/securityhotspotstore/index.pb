@@ -27,3 +27,6 @@ dump/1.txt,1/d/1df5815dabcbb920acaa7d5c7f9e48048c74b6fb
 dump/test2.csv,1/7/17a2f3ceed015d4d55d7861abfaebc2c1149d170
 B
 dump/test-100k.csv,4/7/47bf5af868f15eaaf5075ff48dd8f1bff9103e43
+:
+
+.gitignore,a/5/a5cc2925ca8258af241be7e5b0381edf30266302
