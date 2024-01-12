@@ -1,13 +1,0 @@
-
-t	java:S127"XRefactor the code in order to not assign to this loop counter from within the loop body.(¹–©”8£ó»Î1
-t	java:S127"XRefactor the code in order to not assign to this loop counter from within the loop body.(ğ¿§œ8£ó»Î1
-y	java:S127"XRefactor the code in order to not assign to this loop counter from within the loop body.(å¸óëÿÿÿÿÿ8£ó»Î1
-t	java:S127"XRefactor the code in order to not assign to this loop counter from within the loop body.(†…ñ¡8£ó»Î1
-t	java:S127"XRefactor the code in order to not assign to this loop counter from within the loop body.(Îë†Ø8£ó»Î1
-L	java:S1060"+Replace this use of System.out by a logger.(¼Ø›„úÿÿÿÿ8×ô»Î1
-Z
-java:S11725"=Remove these unused method parameters "dataPath", "clusters".(¯¥º§8àô»Î1
-d
-java:S11729"HRemove these unused method parameters "dataPath", "clusters", "threads".(ÙŠÛ8àô»Î1
-g
-java:S1172="JRemove these unused method parameters "dataPath", "clusters", "processes".(şÆ´ß8áô»Î1

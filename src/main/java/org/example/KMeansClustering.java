@@ -1,25 +1,34 @@
 package org.example;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
+
+import org.example.kmeans.KMeansMultiThread;
+import org.example.kmeans.KMeansSingleThread;
 
 public class KMeansClustering {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException, InterruptedException {
         CommandLineOptions options = parseCommandLineArgs(args);
+        // CommandLineOptions options = new CommandLineOptions();
+        // options.mode = "single";
+        // options.clusters = 5;
+        // options.iterations = 10;
+        // options.dataPath = "dump/test-100k.csv";
 
         switch (options.mode) {
             case "dataGenerate":
                 generateData(options.dataPoints, options.dataPath);
                 break;
-            case "single":
+            case "run":
                 runSingleThread(options.dataPath, options.clusters, options.iterations);
-                break;
-            case "multiThread":
                 runMultiThread(options.dataPath, options.clusters, options.threads, options.iterations);
-                break;
-            case "multiProcess":
                 runMultiProcess(options.dataPath, options.clusters, options.processes, options.iterations);
                 break;
             default:
@@ -77,21 +86,71 @@ public class KMeansClustering {
         }
     }
 
-    private static void runSingleThread(String dataPath, int clusters, int iterations) {
+    private static void runSingleThread(String dataPath, int clusters, int iterations) throws FileNotFoundException {
+        double[][] dataPoints = readDataPoints(dataPath);
+        KMeansSingleThread kMeans = new KMeansSingleThread(dataPoints, clusters);
+
+        long startTime = System.currentTimeMillis();
+        String result = kMeans.run(iterations);
+        long endTime = System.currentTimeMillis();
+
+        long executionTime = endTime - startTime;
+        System.out.println(result);
+        System.out.println("싱글 스레드 실행 시간: " + executionTime + "ms");
     }
 
-    private static void runMultiThread(String dataPath, int clusters, int threads, int iterations) {
+    private static void runMultiThread(String dataPath, int clusters, int threads, int iterations) throws FileNotFoundException, InterruptedException {
+        double[][] dataPoints = readDataPoints(dataPath);
+        KMeansMultiThread kMeans = new KMeansMultiThread(dataPoints, clusters);
+
+        long startTime = System.currentTimeMillis();
+        String result = kMeans.run(threads, iterations);
+        long endTime = System.currentTimeMillis();
+
+        long executionTime = endTime - startTime;
+        System.out.println(result);
+        System.out.println("멀티 스레드 실행 시간: " + executionTime + "ms");
     }
 
     private static void runMultiProcess(String dataPath, int clusters, int processes, int iterations) {
     }
 
+    private static double[][] readDataPoints(String dataPath) throws FileNotFoundException {
+        List<double[]> dataList = new ArrayList<>();
+        File file = new File(dataPath);
+        if (!file.exists()) {
+            System.err.println("File not found: " + dataPath);
+            throw new FileNotFoundException();
+        }
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] parts = line.split(",");
+                double x = Double.parseDouble(parts[0]);
+                double y = Double.parseDouble(parts[1]);
+                dataList.add(new double[] {x, y, 0});
+            }
+        } catch (IOException e) {
+            System.err.println("Error reading file: " + e.getMessage());
+        } catch (NumberFormatException e) {
+            System.err.println("Error parsing number: " + e.getMessage());
+        }
+
+        double[][] dataPoints = new double[dataList.size()][3];
+        for (int i = 0; i < dataList.size(); i++) {
+            dataPoints[i] = dataList.get(i);
+        }
+        return dataPoints;
+    }
+
+
     static class CommandLineOptions {
         String mode = "";
         String dataPath = "";
-        int clusters = 0;
-        int threads = 0;
-        int processes = 0;
+        int clusters = 5;
+        int threads = 5;
+        int processes = 5;
         int dataPoints = 0;
         int iterations = 10;
     }
