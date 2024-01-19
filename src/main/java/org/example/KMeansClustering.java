@@ -9,18 +9,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+import org.example.kmeans.KMeansMultiProcess;
 import org.example.kmeans.KMeansMultiThread;
 import org.example.kmeans.KMeansSingleThread;
 
 public class KMeansClustering {
 
-    public static void main(String[] args) throws IOException, InterruptedException {
+    public static void main(String[] args) throws IOException, InterruptedException, ClassNotFoundException {
         CommandLineOptions options = parseCommandLineArgs(args);
-        // CommandLineOptions options = new CommandLineOptions();
-        // options.mode = "single";
-        // options.clusters = 5;
-        // options.iterations = 10;
-        // options.dataPath = "dump/test-100k.csv";
 
         switch (options.mode) {
             case "dataGenerate":
@@ -112,8 +108,21 @@ public class KMeansClustering {
         System.out.println("멀티 스레드 실행 시간: " + executionTime + "ms");
     }
 
-    private static void runMultiProcess(String dataPath, int clusters, int processes, int iterations) {
+    private static void runMultiProcess(String dataPath, int clusters, int processes, int iterations)
+        throws IOException, ClassNotFoundException, InterruptedException {
+
+        double[][] dataPoints = readDataPoints(dataPath);
+        KMeansMultiProcess kMeans = new KMeansMultiProcess(dataPoints, clusters);
+
+        long startTime = System.currentTimeMillis();
+        String result = kMeans.run(processes, iterations);
+        long endTime = System.currentTimeMillis();
+
+        long executionTime = endTime - startTime;
+        System.out.println(result);
+        System.out.println("멀티 프로세스 실행 시간: " + executionTime + "ms");
     }
+
 
     private static double[][] readDataPoints(String dataPath) throws FileNotFoundException {
         List<double[]> dataList = new ArrayList<>();
@@ -152,6 +161,6 @@ public class KMeansClustering {
         int threads = 5;
         int processes = 5;
         int dataPoints = 0;
-        int iterations = 10;
+        int iterations = 200;
     }
 }

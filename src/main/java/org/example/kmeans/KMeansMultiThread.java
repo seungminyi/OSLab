@@ -1,5 +1,6 @@
 package org.example.kmeans;
 
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -7,14 +8,14 @@ import java.util.concurrent.TimeUnit;
 public class KMeansMultiThread {
     private double[][] dataPoints;
     private int k;
-    private double[][] centroids;
+    private double
+        [][] centroids;
 
     public KMeansMultiThread(double[][] dataPoints, int k) {
         this.dataPoints = dataPoints;
         this.k = k;
         this.centroids = new double[k][2];
 
-        // 초기 중심점 설정
         for (int i = 0; i < k; i++) {
             centroids[i][0] = dataPoints[i][0];
             centroids[i][1] = dataPoints[i][1];
@@ -26,19 +27,19 @@ public class KMeansMultiThread {
 
         for (int iter = 0; iter < iterations; iter++) {
             int taskSize = dataPoints.length / threads;
+            CountDownLatch latch = new CountDownLatch(threads);
             for (int j = 0; j < threads; j++) {
                 int start = j * taskSize;
                 int end = (j == threads - 1) ? dataPoints.length : (j + 1) * taskSize;
-                executor.submit(() -> assignPointsToClusters(start, end));
+                executor.submit(() -> {
+                    try {
+                        assignPointsToClusters(start, end);
+                    } finally {
+                        latch.countDown();
+                    }
+                });
             }
-
-            executor.shutdown();
-            executor.awaitTermination(10, TimeUnit.MINUTES);
-
-            if (iter < iterations - 1) {
-                executor = Executors.newFixedThreadPool(threads);
-            }
-
+            latch.await();
             updateCentroids();
         }
 

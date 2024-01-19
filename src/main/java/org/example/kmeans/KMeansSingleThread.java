@@ -34,7 +34,6 @@ public class KMeansSingleThread {
                 }
                 point[2] = closestCluster;
             }
-
             updateCentroids();
         }
 
