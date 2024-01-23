@@ -1,5 +1,6 @@
 package org.example.kmeans;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -17,16 +18,13 @@ public class KMeansMultiProcess {
     private double[][] dataPoints;
     private final int k;
     private double[][] centroids;
-    private final ArrayList<double[]> updatedDataPointsList = new ArrayList<>();
-    private final int[] ports;
-    private final ServerSocket[] serverSockets;
+    private int[] ports;
+    private ServerSocket[] serverSockets;
 
     public KMeansMultiProcess(double[][] dataPoints, int k) throws IOException {
         this.dataPoints = dataPoints;
         this.k = k;
         this.centroids = initCentroids(dataPoints, k);
-        this.ports = new int[k];
-        this.serverSockets = initServerSockets(k);
     }
 
     private double[][] initCentroids(double[][] dataPoints, int k) {
@@ -37,27 +35,27 @@ public class KMeansMultiProcess {
         return centroids;
     }
 
-    private ServerSocket[] initServerSockets(int k) throws IOException {
-        ServerSocket[] serverSockets = new ServerSocket[k];
-        for (int i = 0; i < k; i++) {
+    private void initServerSockets(int processes) throws IOException {
+        this.serverSockets = new ServerSocket[processes];
+        this.ports = new int[processes];
+        for (int i = 0; i < processes; i++) {
             serverSockets[i] = new ServerSocket(0);
             ports[i] = serverSockets[i].getLocalPort();
         }
-        return serverSockets;
     }
 
     public String run(int processes, int iterations) throws IOException, InterruptedException {
+        initServerSockets(processes);
         ExecutorService executor = Executors.newFixedThreadPool(processes);
         List<ProcessTaskHandler> processHandlers = createProcessHandlers(processes);
 
         for (int iter = 0; iter < iterations; iter++) {
+            boolean b = iter == 0;
             CountDownLatch latch = new CountDownLatch(processes);
-            updatedDataPointsList.clear();
 
-            clusterProcess(executor, processHandlers, latch);
+            clusterProcess(executor, processHandlers, latch, b);
 
             latch.await();
-            updateDataPoints();
             updateCentroids();
         }
 
@@ -67,25 +65,33 @@ public class KMeansMultiProcess {
 
     private List<ProcessTaskHandler> createProcessHandlers(int processes) throws IOException {
         List<ProcessTaskHandler> handlers = new ArrayList<>();
+        int taskSize = dataPoints.length / processes;
         for (int i = 0; i < processes; i++) {
-            handlers.add(new ProcessTaskHandler("build/libs/os-lab.jar", "org.example.kmeans.ProcessTask", k, ports[i], serverSockets[i]));
+            int start = i * taskSize;
+            int end = (i == processes - 1) ? dataPoints.length : (i + 1) * taskSize;
+            handlers.add(new ProcessTaskHandler(start, end, k, ports[i], serverSockets[i]));
         }
         return handlers;
     }
 
-    private void clusterProcess(ExecutorService executor, List<ProcessTaskHandler> handlers, CountDownLatch latch) {
-        for (int i = 0; i < handlers.size(); i++) {
-            final int index = i;
+    private void clusterProcess(ExecutorService executor, List<ProcessTaskHandler> handlers, CountDownLatch latch, boolean isFirst) {
+        for (int processIdx = 0; processIdx < handlers.size(); processIdx++) {
+            final int finalProcessIdx = processIdx;
+            int startIdx = handlers.get(finalProcessIdx).startIdx;
+            int endIdx = handlers.get(finalProcessIdx).endIdx;
             executor.submit(() -> {
                 try {
-                    double[][] dataSlice = getDataSlice(index, handlers.size());
-                    handlers.get(index).sendData(dataSlice, centroids);
-                    double[][] processedData = handlers.get(index).receiveData();
-                    synchronized (updatedDataPointsList) {
-                        updatedDataPointsList.addAll(Arrays.asList(processedData));
+                    if (isFirst) {
+                        double[][] dataSlice = getDataSlice(startIdx, endIdx);
+                        handlers.get(finalProcessIdx).sendData(dataSlice);
+                    }
+                    handlers.get(finalProcessIdx).sendData(centroids);
+                    double[] processedData = handlers.get(finalProcessIdx).receiveData();
+                    for (int j = startIdx; j < endIdx; j++) {
+                        dataPoints[j][2] = processedData[j - startIdx];
                     }
                 } catch (Exception e) {
-                    System.out.println(e.getMessage());
+                    e.printStackTrace();
                 } finally {
                     latch.countDown();
                 }
@@ -93,17 +99,8 @@ public class KMeansMultiProcess {
         }
     }
 
-    private double[][] getDataSlice(int index, int totalProcesses) {
-        int totalDataPoints = dataPoints.length;
-        int sliceSize = totalDataPoints / totalProcesses;
-        int startIndex = index * sliceSize;
-        int endIndex = (index == totalProcesses - 1) ? totalDataPoints : startIndex + sliceSize;
-
-        return Arrays.copyOfRange(dataPoints, startIndex, endIndex);
-    }
-
-    private void updateDataPoints() {
-        dataPoints = updatedDataPointsList.toArray(new double[0][]);
+    private double[][] getDataSlice(int start, int end) {
+        return Arrays.copyOfRange(dataPoints, start, end);
     }
 
     private void updateCentroids() {
@@ -153,22 +150,31 @@ class ProcessTaskHandler {
 
     private final ObjectOutputStream out;
     private final ObjectInputStream in;
+    public final int startIdx;
+    public final int endIdx;
 
-    public ProcessTaskHandler(String jarPath, String className, int k, int port, ServerSocket serverSocket) throws IOException {
-        ProcessBuilder processBuilder = new ProcessBuilder("java", "-cp", jarPath, className, String.valueOf(k), String.valueOf(port));
+    public ProcessTaskHandler(int startIdx, int endIdx, int k, int port, ServerSocket serverSocket) throws
+        IOException {
+        ProcessBuilder processBuilder = new ProcessBuilder("java",
+            "-cp",
+            "build/libs/os-lab.jar",
+            "org.example.kmeans.ProcessTask",
+            String.valueOf(k),
+            String.valueOf(port));
         Process process = processBuilder.start();
         Socket socket = serverSocket.accept();
         this.out = new ObjectOutputStream(socket.getOutputStream());
         this.in = new ObjectInputStream(socket.getInputStream());
+        this.startIdx = startIdx;
+        this.endIdx = endIdx;
     }
 
-    public void sendData(double[][] dataSlice, double[][] centroids) throws IOException {
-        out.writeObject(dataSlice);
-        out.writeObject(centroids);
+    public void sendData(double[][] data) throws IOException {
+        out.writeObject(data);
     }
 
-    public double[][] receiveData() throws IOException, ClassNotFoundException {
-        return (double[][]) in.readObject();
+    public double[] receiveData() throws IOException, ClassNotFoundException {
+        return (double[])in.readObject();
     }
 
     public void close() throws IOException {

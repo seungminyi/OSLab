@@ -158,9 +158,9 @@ public class KMeansClustering {
         String mode = "";
         String dataPath = "";
         int clusters = 5;
-        int threads = 5;
-        int processes = 5;
+        int threads = 8;
+        int processes = 8;
         int dataPoints = 0;
-        int iterations = 200;
+        int iterations = 10;
     }
 }
