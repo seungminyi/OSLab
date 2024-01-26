@@ -56,5 +56,5 @@ java -jar os-lab.jar -mode dataGenerate -dataPoints 1000 -dataPath "./data.csv"
 성능 비교
 싱글 스레드, 멀티 스레드, 멀티 프로세스 모드를 차례로 실행하여 각 모드에서의 수행 시간을 기록하고 비교합니다. 이를 통해 다양한 실행 환경에서의 K-means 알고리즘의 성능을 분석할 수 있습니다.
 
-## 결과
----
+## 결과 및 리포트
+결과 및 리포트는 [프로세스와 스레드의 비교 분석: k-means 알고리즘을 활용한 성능 평가](https://seungminyi.tistory.com/1)에서 확인할 수 있습니다
